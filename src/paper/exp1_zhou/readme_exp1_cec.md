@@ -7,8 +7,8 @@ coauthor on the original Zhou paper and on this paper.
 ## preprocessing
 `python make_all_zhou_data.py`
 will produce a text file with all sentences in the Zhou dataset 
-    - Our code cleans the examples 
-    - Our code produces each of the 5 sentence types in the Zhou paper, but only
+- Our code cleans the examples 
+- Our code produces each of the 5 sentence types in the Zhou paper, but only
       "O", the original form, is necessary for this experiment 
 
 ## compute affinities 

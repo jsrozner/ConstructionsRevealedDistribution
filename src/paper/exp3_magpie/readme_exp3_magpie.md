@@ -1,12 +1,12 @@
 Code for section 5.1 - CoGs
 
 ## data
-data/exp3_magpie/MAGPIE_filtered_split_random.jsonl
-downloaded from github; see data_config.py
+- data/exp3_magpie/MAGPIE_filtered_split_random.jsonl
+- downloaded from github; see data_config.py
 
 ## preprocess
-magpie_preprocess.ipynb
-produces the files in data/exp3_magpie/12_29_magpie_unclean.zip
+- magpie_preprocess.ipynb
+- produces the files in data/exp3_magpie/12_29_magpie_unclean.zip
 
 ## produce affinities
 - will need to unzip the above
