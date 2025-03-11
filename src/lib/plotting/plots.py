@@ -9,12 +9,12 @@ import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
 
-
-
 from lib.distr_diff_fcns import euclidean_distance, jensen_shannon_divergence
 from lib.scoring_fns import hhi_rounded, probability
 from lib.exp_common.corr_matrix import get_scores
 from lib.plotting.plot_corr_matrix import plot_heatmap
+from rozlib.libs.plotting.plotting import add_X_to_plot
+from lib.utils.utils_misc import save_fig
 
 
 def plot_all_affinities(
@@ -190,7 +190,8 @@ def full_plot_single_sentence(
         add_scores_on_top_font_size = 5,
         do_print=False,
         plot_local=False,
-        use_euclid=False
+        use_euclid=False,
+        num_preds=0,
 ):
     """
     Simple convenience function to plot a single dim heatmap for sentence s
@@ -202,10 +203,13 @@ def full_plot_single_sentence(
     Returns:
 
     """
-    gaf = plot_all_affinities(s,
-                              do_make_local_aff_heatmap=plot_local, do_print=do_print,
-                              use_euclid=use_euclid
-                              )
+    gaf = plot_all_affinities(
+        s,
+        do_make_local_aff_heatmap=plot_local,
+        do_print=do_print,
+        use_euclid=use_euclid,
+        num_preds=num_preds,
+    )
     all_words = s.strip(".").split(" ")
     return plot_multiple_global_aff(
         [(gaf, all_words)],

@@ -10,8 +10,8 @@ import torch
 from lib.exp_common.mlm_gpu_common import TokenizationException
 from lib.exp_common.mlm_align_tokens import TokenizedWordInSentence, reassembled_words_from_tokens_roberta, \
     align_words_with_token_list
-from lib.mlm_singleton import get_singleton_scorer
-from libs.utils import split_and_remove_punct
+from lib.common.mlm_singleton import get_singleton_scorer
+from rozlib.libs.utils.string import split_and_remove_punct
 
 mlm = get_singleton_scorer('roberta-large')
 

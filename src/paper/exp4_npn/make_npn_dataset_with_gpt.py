@@ -5,16 +5,17 @@ import itertools
 import random
 
 from nltk import WordNetLemmatizer
-from nltk.corpus import wordnet as wn, wordnet
+from nltk.corpus import wordnet
 from typing import List
 
 from openai import ChatCompletion
 
 from data_config import Exp4NPN
-from lib.mlm_singleton import init_singleton_scorer
+from lib.common.mlm_singleton import init_singleton_scorer
 from paper.exp4_npn.npn_utils import VocabItem, GPTResult
 from rozlib.libs.api.api_gpt import rungpt
 from rozlib.libs.common.data.utils_jsonl import dump_to_jsonl
+from rozlib.libs.library_ext_utils.utils_wordnet import get_word_pos
 
 mlm_scorer = init_singleton_scorer('roberta-large', output_attentions=True)
 
@@ -34,28 +35,6 @@ def get_vocab() -> List[VocabItem]:
     # return [mlm_scorer.tokenizer.convert_tokens_to_string([s]) for s in v.keys()]
     # return vocab
 
-def get_word_pos(word: str) -> List[str]:
-    """
-    Retrieve all potential parts of speech for a given word using WordNet.
-
-    Args:
-        word (str): The word to lookup.
-    """
-    # pos_list = {
-    #     'n': 'noun',
-    #     'v': 'verb',
-    #     'a': 'adjective',
-    #     's': 'adjective (satellite)',
-    #     'r': 'adverb',
-    # }
-    pos_types = ['n', 'v', 'a', 's', 'r']
-
-    all_pos = [s.pos() for s in wn.synsets(word)]
-    for p in all_pos:
-        if not p in pos_types:
-            print(f"invalid pos: {p}")
-
-    return list(set(all_pos))
 
 def is_valid_vocab_item(v: VocabItem,
                         valid_pos: List[str]):

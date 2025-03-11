@@ -7,6 +7,7 @@ from typing import Tuple, List, Optional, Callable, Literal
 
 import torch
 
+from lib.common.corr_matrix_common import top_k_preds_for_logits
 from lib.utils.utils_misc import replace_word_with_substitution
 from rozlib.libs.library_ext_utils.utils_transformer import ROBERTA_SPACE_START_CHAR
 from rozlib.libs.utils.string import str_all_punct, split_and_remove_punct
@@ -14,7 +15,7 @@ from rozlib.libs.utils.string import str_all_punct, split_and_remove_punct
 from lib.distr_diff_fcns import euclidean_distance
 from lib.exp_common.sentence_for_mlm_processing import SentenceForMLMProcessing
 from lib.exp_common.mlm_align_tokens import reassembled_words_from_tokens_roberta, TokenizedWordInSentence, align_words_with_token_list
-from lib.mlm_singleton import get_singleton_scorer
+from lib.common.mlm_singleton import get_singleton_scorer
 from lib.scoring_fns import hhi, surprisal, probability
 from lib.exp_common.mlm_result_for_sentence import MLMResultForSentence
 
@@ -99,17 +100,6 @@ def make_logits_list_under_substit(
         else:
             all_logits.append(logits)
     return new_sent, all_logits, multi_token_idx_list
-
-def top_k_preds_for_logits(logits: torch.Tensor, top_k: int) -> List[str]:
-    """
-    Get the top_k predictions (words as strings) from a logit vector
-    """
-    predicted_ids = torch.topk(logits, top_k).indices
-    predicted_words = [
-        mlm_scorer.tokenizer.decode([id])
-        for id in predicted_ids
-    ]
-    return predicted_words
 
 
 """
@@ -269,6 +259,7 @@ def get_score_matrix(
     probs_all = torch.empty((0, len(sent_word_list)))
     new_sents_under_sub: List[str] = []
 
+    # outer loop is which word we are perturbing (row in matrix)
     for idx, w in enumerate(sent_word_list):
         print(f"{idx}: {w}")
         if idx in multi_tok_indices:
@@ -285,6 +276,9 @@ def get_score_matrix(
             word_for_substitution = subs_list[idx]
 
         # get logits under sub
+        # this gets the logits for each word in the sentence when another word is masked
+        # e.g., if we mask w2 in a 3 word sentence, we will have (m, m w3), (w1, m, w3), (w1, m, m) => logits at pos [1, 2, 3]
+        # this list is ((2,1,1), (2,2,2), (2,3,3))
         # note that make_logits_list_under_sub will print the updated sentence
         new_sent, logit_list_under_sub, _ = make_logits_list_under_substit(
             orig_sent, w, idx, word_for_substitution)
@@ -296,14 +290,38 @@ def get_score_matrix(
 
         # calc scores (this list corresponds to a row in the matrix)
         score_list = []
-        assert (len(logits_list_base) == len(logit_list_under_sub) == len(sent_word_list))
+        assert len(logits_list_base) == len(logit_list_under_sub) == len(sent_word_list)
+        # inner loop is columns
         for orig_l, new_l in zip(logits_list_base, logit_list_under_sub):
             # todo: not sure why we are sending them to device (they should still be on device?)
             dist_diff = distr_diff_fn(orig_l.to(mlm_scorer.device), new_l.to(mlm_scorer.device))
+
+            # if normalize:
+            # todo: we wanted to get normalized; but we are not returning the
+            # score for the MASK
+            #
+            #     # we need to obtain the representation for the position
+            #     # ie. we need ((2,1,2), (2,2,2), (2,3,2))
+            #
+            #     # we are going to see how much the perturbed spot actually changed
+            #     print(sent_word_list[idx])
+            #     perturbed_loc_orig_dist = logits_list_base[idx].to(mlm_scorer.device)
+            #     perturbed_loc_perturbed_dist = logit_list_under_sub[idx].to(mlm_scorer.device)
+            #     perturbed_dist_diff = distr_diff_fn(perturbed_loc_orig_dist, perturbed_loc_perturbed_dist)
+            #     divisor = perturbed_dist_diff
+            #     print(f"normalize: {divisor}")
+            #     # assert(divisor > 0)
+            # if divisor == 0:
+            #     if abs(dist_diff) > 1e-6:
+            #         print(f"divisor is 0 but dist_diff is {dist_diff}")
+            #     score_list.append(0)
+            # else:
+            #     score_list.append(dist_diff / divisor)
             score_list.append(dist_diff)
 
         # maybe do probs for MI (todo: not done correctly)
         if compute_probs_for_mi:
+            raise Exception("not implemented; recheck")
             # instead of accumulating in this function, we accumulate in probs_list in other fcn and then aggregate
             prob_list = calc_probs_for_mi(orig_sent, sent_word_list, logit_list_under_sub, multi_tok_indices)
             probs_all = torch.vstack((probs_all, torch.Tensor(prob_list)))

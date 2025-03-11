@@ -6,7 +6,7 @@ import ast
 from transformers import BatchEncoding
 
 from paper.exp3_magpie.corpus_magpie import WrappedIdiomWord
-from lib.mlm_singleton import get_singleton_scorer
+from lib.common.mlm_singleton import get_singleton_scorer
 
 mlm = get_singleton_scorer()
 

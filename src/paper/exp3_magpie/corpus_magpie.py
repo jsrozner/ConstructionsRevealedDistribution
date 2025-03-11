@@ -4,7 +4,7 @@ import torch
 from transformers import BatchEncoding
 
 from data_config import Exp3Magpie
-from lib.mlm_singleton import get_singleton_scorer
+from lib.common.mlm_singleton import get_singleton_scorer
 from typing import List, Optional, Protocol
 from dataclasses import dataclass, field
 from typing import Tuple

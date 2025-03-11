@@ -62,5 +62,9 @@ class Exp4NPN:
     _exp4_npn = DATADIR / "exp4_npn"
 
     npn_gpt_outputs = _exp4_npn / "npn_gpt4_generations.jsonl"
+
+    # includes gpt outputs before bad words were removed; not published to public repo
+    npn_gpt_outputs_unclean = DATADIR / "../data_other/exp4_npn/npn_gpt4_generations_before_cleaning.jsonl"
+
     npn_outputs_for_human_acceptability_csv = _exp4_npn / "npn_outputs_for_human_acceptability.csv"
     npn_acceptability_ratings_csv = _exp4_npn / "npn_ratings_cory.csv"

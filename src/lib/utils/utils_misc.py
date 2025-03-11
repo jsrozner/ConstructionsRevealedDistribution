@@ -1,12 +1,10 @@
+from pathlib import Path
 from typing import List, Callable
 
+from matplotlib.figure import Figure
+
 from rozlib.libs.utils.string import split_and_remove_punct
-
-
-# from utils.string import split_and_remove_punct
-
-
-# from libs.utils import split_and_remove_punct
+from rozlib.libs.plotting.utils_latex_matplot import save_fig as save_fig_lib
 
 
 def get_nth_occ(input_list: List[str], tgt: str, nth: int) -> int:
@@ -79,3 +77,25 @@ def replace_word_with_substitution(
 
 def fn_names(score_fns: List[Callable]):
     return [x.__name__ for x in score_fns]
+
+
+# helper to allow us not to write the figs dir everywhere; todo: should be in a config...
+figs_dir = Path("/proj/cxs_are_revealed/supplemental/figs")
+
+def save_fig(
+        fig: Figure,
+        filename: str,
+        transparent_bg = False
+):
+    """
+    Will save a matplot Fig to filename
+
+    Args:
+        fig:
+        filename:
+        transparent_bg:
+
+    Returns: None
+
+    """
+    save_fig_lib(fig, figs_dir, filename, transparent_bg)

@@ -7,9 +7,9 @@ from typing import Optional, List
 import torch
 from tqdm import tqdm
 
-from lib.mlm_singleton import get_singleton_scorer
+from lib.common.mlm_singleton import get_singleton_scorer
 from lib.scoring_fns import hhi, min_surprisal, ScoreFnTensor
-from lib.exp_common.config import jag39_config, default_config
+from lib.exp_common.config import default_config
 from lib.scoring_fns import surprisal
 from lib.utils.utils_run import run_for_sub_dir
 from rozlib.libs.common.config_wrapper import set_config
