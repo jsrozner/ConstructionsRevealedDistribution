@@ -7,27 +7,6 @@ from rozlib.libs.utils.string import split_and_remove_punct
 from rozlib.libs.plotting.utils_latex_matplot import save_fig as save_fig_lib
 
 
-def get_nth_occ(input_list: List[str], tgt: str, nth: int) -> int:
-    """
-    Returns the index of the nth occurrence of tgt in the input_list.
-    Raises if (nth) occurrences of tgt are not found
-
-    nth: 1-indexed
-    """
-    if nth <= 0:
-        raise Exception("nth must be greater than 0 (it is 1 indexed)")
-
-    ct = 0
-    found_idx = -1  # search starts at found_idx + 1
-    while ct < nth:
-        # print(f"searching {input_list}from {found_idx + 1}")
-        # will raise if not found
-        found_idx = input_list.index(tgt, found_idx + 1)
-        # print(f"found at {found_idx}")
-        ct += 1
-
-    return found_idx
-
 def replace_word_with_substitution(
         sent: str,
         orig_word: str,
@@ -80,7 +59,7 @@ def fn_names(score_fns: List[Callable]):
 
 
 # helper to allow us not to write the figs dir everywhere; todo: should be in a config...
-figs_dir = Path("/proj/cxs_are_revealed/supplemental/figs")
+figs_dir = Path("/Users/jsrozner/docs_local/research/proj_code/rozner-mono-cxs-main/proj/cxs_are_revealed/supplemental/figs")
 
 def save_fig(
         fig: Figure,

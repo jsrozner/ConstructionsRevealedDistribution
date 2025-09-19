@@ -34,14 +34,13 @@ def process_sent_affinity(
 
     """
     # todo: we could optimize by using the exp1 gpu approach -> we were lazy and did not
-
     # todo: support perturbations
     subs_list = ["<mask>"] * len(sent.split())
     (scores,
      new_sents,
      multi_tok_indices,
      _sent_word_list,
-     hhis,
+     aff_scores,
      _preds,
      _probs,
      _actual_subs) = (
@@ -58,8 +57,8 @@ def process_sent_affinity(
         sentence_id=sent_idx_in_file,
         sentence=sent,
         # todo: we should do tensor -> list here
-        # todo: note that this might not be HHI if another score fn is passed
-        hhi_scores=hhis,
+        # note that this might not be HHI if another score fn is passed
+        hhi_scores=aff_scores,
         multi_tok_indices=multi_tok_indices,
         perturbed_sentences=new_sents,  #perturbations accumulated here
         score_matrix_distribution=scores.tolist()

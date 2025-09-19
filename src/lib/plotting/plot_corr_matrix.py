@@ -1,19 +1,25 @@
 from typing import List, Optional, Tuple
 
+import numpy as np
 import torch
 from matplotlib import pyplot as plt
+from matplotlib.colors import TwoSlopeNorm
 from matplotlib.figure import Figure
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
 
 def plot_heatmap(tensor: torch.Tensor,
                  xlabels: List[str],
                  ylabels: Optional[List[str]],
+                 right_hand_ylabels: Optional[list[str]] = None,
                  cmap: str = 'Blues',
                  title=None,
-                 add_colorbar=True,
+                 add_colorbar=False,
                  fig_size: Optional[Tuple[int, int]] = None,
                  return_fig = False,
-                 xlabel_rotation=90
+                 xlabel_rotation=90,
+                 vmin_max: Optional[tuple[float, float]] = None,
+                 # norm_at_zero = True
                  ) -> Optional[Figure]:
     """
     Plots a heatmap for a 2D tensor.
@@ -39,12 +45,33 @@ def plot_heatmap(tensor: torch.Tensor,
     # plt.yticks(ticks=range(tensor.shape[0]), labels=xlabels, ha='right')
     # Set primary (left) y-axis labels
     if fig_size:
-        fig, ax = plt.subplots(figsize=fig_size)
+        fig, ax = plt.subplots(figsize=fig_size, layout="constrained")
     else:
-        fig, ax = plt.subplots(figsize=(3,3))
-    plt.imshow(tensor_np, cmap=cmap, aspect='auto')
+        fig, ax = plt.subplots(figsize=(3,3), layout="constrained")
+
+    if vmin_max:
+        norm = TwoSlopeNorm(vmin=vmin_max[0],  vcenter=(vmin_max[0]+vmin_max[1])/2, vmax=vmin_max[1])
+        im = plt.imshow(tensor_np, cmap=cmap, aspect='auto', norm=norm)
+    elif np.min(tensor_np) < 0:
+        assert np.max(tensor_np) > 0
+        limit = max(-np.min(tensor_np), np.max(tensor_np))
+        assert limit > 0
+        norm = TwoSlopeNorm(vmin=-limit, vcenter=0.0, vmax=limit)
+        im = plt.imshow(tensor_np, cmap=cmap, aspect='auto', norm=norm)
+    else:
+        im = plt.imshow(tensor_np, cmap=cmap, aspect='auto')
     if add_colorbar:
-        plt.colorbar()  # Adds a color bar to the side
+        # plt.colorbar()  # Adds a color bar to the side
+
+        # this makes sure that we preserve aspect ratio
+        cax = inset_axes(ax,
+                 width="5%",  # width of colorbar
+                 height="100%",  # height of colorbar
+                 loc='right',
+                 borderpad=-2)
+
+        fig.colorbar(im, cax=cax)
+        ax.set_aspect('equal')  # Ensure the image stays square
     if title:
         plt.title(title)
 
@@ -52,15 +79,18 @@ def plot_heatmap(tensor: torch.Tensor,
     ax.set_xticks(range(tensor.shape[1]))
 
     if xlabels is not None:
-        ax.set_yticklabels(xlabels)
         if xlabel_rotation == 90:
             ax.set_xticklabels(xlabels, rotation=xlabel_rotation, ha='center')
         else:
             ax.set_xticklabels(xlabels, rotation=xlabel_rotation, ha='right', rotation_mode='anchor')
+    if ylabels is not None:
+        ax.set_yticklabels(ylabels)
+    else:
+        ax.set_yticklabels(xlabels)
 
     try:
         # todo: not sure why this is having an issue
-        if ylabels is not None:
+        if right_hand_ylabels is not None:
             # Create secondary y-axis for the right side with different labels
             ax_right = ax.twinx()  # Create a twin y-axis sharing the same x-axis
             ax_right.set_ylim(ax.get_ylim())  # Match the limits of the left axis

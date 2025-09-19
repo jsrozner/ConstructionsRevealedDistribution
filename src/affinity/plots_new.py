@@ -18,6 +18,8 @@ def full_plot_single_sentence_new(
         use_euclid=False,
         num_preds=0,
         normalize=False,
+        fig_size = (3,3),
+        keep_punct = False
 ):
     """
     Simple convenience function to plot a single dim heatmap for sentence s
@@ -29,7 +31,7 @@ def full_plot_single_sentence_new(
     Returns:
 
     """
-    s = Sentence(orig_sent)
+    s = Sentence(orig_sent, keep_punct=keep_punct)
     gaf = plot_all_affinities_new(s,
                                   do_make_local_aff_heatmap=plot_local,
                                   do_print=do_print,
@@ -42,6 +44,7 @@ def full_plot_single_sentence_new(
         x_locs=None,
         add_scores_on_top=add_scores_on_top,
         add_scores_on_top_font_size=add_scores_on_top_font_size,
+        overall_fig_size=fig_size
     )
 
 
@@ -110,7 +113,8 @@ def plot_all_affinities_new(
                      # actual_subs,
                      None,
                      cmap=cmap,
-                     title="Local Affinities",
+                     # title="Local Affinities",
+                     xlabel_rotation=45
                      )
 
     # generate_word_score_image(

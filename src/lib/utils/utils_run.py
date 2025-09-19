@@ -8,7 +8,7 @@ from typing import List, Callable, Optional, Literal
 # todo: move this into rozlib utils
 
 def check_dir_exists(
-        dir_to_check: Path,
+        dir_to_check: Path | str,
         create_ok: bool = False,
         err_msg: Optional[str] = None):
     # check directories
@@ -49,6 +49,7 @@ def run_for_file(
         if keep_existing:
             logging.warning("Keep is set; will not delete")
         else:
+            logging.warning("will remove and restart that file")
             os.remove(tmp_out_path)
 
     #otherwise, create file at tmp path (this process has a "lock")

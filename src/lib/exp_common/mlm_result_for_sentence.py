@@ -22,8 +22,9 @@ class MLMResultForSentence:
 
     sentence: str       # full sentence
 
-    #todo: support other scores?
-    # scores: List[Tuple[str, float]]    # score_name: score
+    # note: these are generally just "scores", not HHI scores, which were used only in initial experiments
+    # todo: support other scores?
+    #  scores: List[Tuple[str, float]]    # score_name: score
     hhi_scores: List[float]
 
     # mlm_results: List[MLMResultForWord]

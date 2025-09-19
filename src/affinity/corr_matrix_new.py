@@ -1,20 +1,20 @@
+# todo: rename this file
 import warnings
 from itertools import permutations
+from pprint import pp
 from typing import Tuple, List, Optional, Callable, Literal, Any
 
 import torch
 
 from affinity.tokenization import Sentence, MaskedSent
-from lib.common.corr_matrix_common import top_k_preds_for_logits
-from lib.distr_diff_fcns import euclidean_distance
+from lib.common.corr_matrix_common import top_k_preds_for_logits, top_k_preds_with_probs
+from lib.distr_diff_fcns import euclidean_distance, jensen_shannon_divergence
 from lib.common.mlm_singleton import get_singleton_scorer
-from lib.scoring_fns import surprisal, probability
+from lib.scoring_fns import surprisal, probability, get_logits
 
-mlm = get_singleton_scorer()
 
 def get_logits_for_each_word_in_sent(
         s: Sentence,
-        warn_if_multi_token = True
 ) -> List[Tuple[MaskedSent, bool, torch.Tensor]]:
     """
     Process sentence; will skip multitoken masks
@@ -27,23 +27,25 @@ def get_logits_for_each_word_in_sent(
         - bool: isMultiToken
         - logit tensor (if not multitoken)
     """
-    pairs: List[Tuple[MaskedSent, bool, torch.Tensor]] = []
+    mlm = get_singleton_scorer()
+    tuples: List[Tuple[MaskedSent, bool, torch.Tensor]] = []
     ct = 0  # todo(low): return this from the generator instead
     for masked_sent in s.inputs_for_each_word(allow_multi_token=True):
         word = s.words_clean[ct]
         if len(masked_sent.masked_token_indices) > 1:
             logits = torch.zeros(mlm.tokenizer.vocab_size)
-            pairs.append((masked_sent, True, logits))
+            tuples.append((masked_sent, True, logits))
             warnings.warn(f"multitoken will be skipped: {word}")
         else:
             logits = get_logits_for_masked_sent(masked_sent)
-            pairs.append((masked_sent, False, logits))
+            tuples.append((masked_sent, False, logits))
         ct += 1
 
-    return pairs
+    return tuples
 
 def get_logits_for_masked_sent(
-        masked_sent: MaskedSent
+        masked_sent: MaskedSent,
+        do_print = False
 ):
     """
     Given a masked sentence, run forward and get logits at the masked index.
@@ -57,14 +59,73 @@ def get_logits_for_masked_sent(
     Returns: output logits for masked_sent.input_ids run forward; with the logits at the masked index extracted
 
     """
+    mlm = get_singleton_scorer()
+    if not do_print:
+        p = lambda *args: None
+    else:
+        p = print
+
+    p("getting logits_for_masked_sent")
     assert len(masked_sent.masked_token_indices) == 1
     outputs = mlm.get_model_outputs_for_input(masked_sent.input_ids)
     logits = outputs.logits
 
+    p("input Ids", masked_sent.input_ids)
+    p("tokens", mlm.tokenizer.convert_ids_to_tokens(masked_sent.input_ids[0]))
+    p("shape", logits.shape)
+    probs = torch.nn.functional.softmax(logits, dim=-1)
+    p("outputs - top for each pos")
+    top_token_ids = torch.argmax(probs, dim=-1)  # Shape: (words_in_sent,)
+    p("top ids", top_token_ids)
+    p("tokens", mlm.tokenizer.convert_ids_to_tokens(top_token_ids[0]))
+
     # predictions is vocab_len [logit, logit, ... logit]
-    token_logits = logits[0, masked_sent.masked_token_indices[0]]     # batch, idx, then vocab_len shape
+    # the ltg models drop their first <s> token
+    # token_logits = logits[0, masked_sent.masked_token_indices[0] + mlm.output_shift_for_decoding]     # batch, idx, then vocab_len shape
+    token_logits = mlm.extract_from_tensor_for_batch_and_tok_idx(logits, 0, masked_sent.masked_token_indices[0])
 
     return token_logits
+
+def get_contextual_repr_for_masked_sent(
+        masked_sent: MaskedSent,
+        layer = -1,
+        do_print = False
+):
+    """
+    Given a masked sentence, run forward and get hidden state at the layer.
+    Note that MaskedSent represents the location that was originally masked.
+
+    This is just a helper function to run forward and extract a single output hidden repr
+
+    Args:
+        masked_sent:
+
+    Returns: output logits for masked_sent.input_ids run forward; with the logits at the masked index extracted
+
+    """
+    mlm = get_singleton_scorer()
+    if not do_print:
+        p = lambda *args: None
+    else:
+        p = print
+
+    p("getting logits_for_masked_sent")
+    assert len(masked_sent.masked_token_indices) == 1
+    outputs = mlm.get_model_outputs_for_input(
+        masked_sent.input_ids,
+        use_cache=False,
+        output_hidden_states=True
+    )
+    hiddens = outputs.hidden_states
+    if hiddens is None:
+        raise Exception("hidden states is none")
+    single_layer = hiddens[layer]
+
+    # will shift for certain models
+    tgt_vector = mlm.extract_from_tensor_for_batch_and_tok_idx(
+        single_layer, 0, masked_sent.masked_token_indices[0])
+
+    return tgt_vector
 
 def compute_surprisal_for_logits(
         masked_sent: MaskedSent,
@@ -83,7 +144,7 @@ def compute_surprisal_for_logits(
 
     Returns: the score for the appropriate logit index as float
     """
-    if score_fn not in [probability, surprisal]:
+    if score_fn not in [probability, surprisal, get_logits]:
         raise Exception(f"Invalid score_fn, {score_fn.__name__} passed")
     if len(masked_sent.masked_token_indices) > 1:
         print(f"Warning: multitoken")
@@ -99,7 +160,7 @@ def get_scores_new(
         score_fn = probability,
         num_preds = 5,
         calculate_affinities=True,
-        dist_diff_fn=euclidean_distance,
+        dist_diff_fn=jensen_shannon_divergence,
         normalize = False
 ) -> Tuple:
     """
@@ -120,6 +181,8 @@ def get_scores_new(
             - global_affinities,
             - num_preds predictions for each word in orig_sent
     """
+    if dist_diff_fn != jensen_shannon_divergence:
+        warnings.warn("Using non JSD divergence fcn")
     if score_fn != surprisal and score_fn != probability:
         warnings.warn(f"Using non-surprisal / prob score fn: {score_fn}")
 
@@ -160,6 +223,65 @@ def get_scores_new(
         preds,
     )
 
+def compute_single_local_affinity(
+        sent: Sentence,
+        index_to_check: int,
+        index_to_perturb: int,
+        expect_word_at_index_to_check: Optional[str] = None,
+        expect_word_at_index_to_perturb: Optional[str] = None,
+        distr_diff_fn: Callable[[torch.Tensor, torch.Tensor], float] = jensen_shannon_divergence,
+        print_fills_topk: Optional[int] = None,
+) -> float:
+    """
+    (Adapted from get_score_matrix_new)
+    Will measure the local_aff bw index_to_check and index_to_perturb.
+    In the paper these two correspond to (j,i), since we perturb *rows* and measure *columns*
+    Args:
+        sent:
+        index_to_check:
+        index_to_perturb:
+        distr_diff_fn:
+
+    Returns:
+
+    """
+    mlm = get_singleton_scorer()
+    # print(f"computing local aff for {sent.sent}, indices ({index_to_check}, {index_to_perturb})")
+    if expect_word_at_index_to_check:
+        assert sent.words_clean[index_to_check] == expect_word_at_index_to_check
+    if expect_word_at_index_to_perturb:
+        assert sent.words_clean[index_to_perturb] == expect_word_at_index_to_perturb
+
+    # todo: assert single mask
+    warnings.warn("This function will not assert single masking. You need to check.")
+
+    # compute base distribution
+    masked_sent = sent.get_inputs_with_word_idx_masked(index_to_check)
+    logits_base = get_logits_for_masked_sent(masked_sent)
+
+    # compute multimask
+    # todo: currently this function won't check that the strs match
+    warnings.warn(f"This function does not check that the strings match.")
+    multi_mask_sent = sent.get_inputs_with_word_indices_masked_multi_mask([index_to_check, index_to_perturb])
+    logits_multi_mask = mlm.get_model_outputs_for_input(multi_mask_sent.input_ids).logits
+    logits_under_perturb = mlm.extract_from_tensor_for_batch_and_tok_idx(
+        logits_multi_mask,
+        0,
+        multi_mask_sent.masked_words[0].masked_token_indices[0])
+
+    if print_fills_topk:
+        preds1 = top_k_preds_with_probs(logits_base, print_fills_topk)
+        preds2 = top_k_preds_with_probs(logits_under_perturb, print_fills_topk)
+        pp(preds1)
+        pp(preds2)
+
+    dist_diff = distr_diff_fn(logits_base, logits_under_perturb)
+    dist_diff2 = distr_diff_fn(logits_under_perturb, logits_base)
+    assert abs(dist_diff-dist_diff2)/dist_diff < 1e-4
+    return dist_diff
+
+
+
 def get_score_matrix_new(
         sent: Sentence,
         logits_list_base: List[torch.Tensor],
@@ -177,6 +299,7 @@ def get_score_matrix_new(
     - distr_diff_fn - the function to use to calculate the distributional diff between base logits (no perturbation)
         and under substitution / mask
     """
+    mlm = get_singleton_scorer()
     if do_print:
         p = print
     else:
@@ -197,19 +320,22 @@ def get_score_matrix_new(
             continue
 
         # word_for_substitution = subs_list[idx]
+        # this is just so that we can print the sentence! not used for actual masking
         word_for_substitution = "<mask>"
         subbed_sent = sent.get_sent_with_substituted_word_at_idx(i, word_for_substitution)
         new_sents_under_sub.append(subbed_sent)
 
         multi_mask_sent = sent.get_inputs_with_word_indices_masked_multi_mask([i,j])
-        outputs = mlm.get_model_outputs_for_input(multi_mask_sent.input_ids)
-        logits = outputs.logits
         # note that we're still singly tokenized, so masked_token_indices has len 1
         for masked_word in multi_mask_sent.masked_words:
             assert len(masked_word.masked_token_indices) == 1
+        outputs = mlm.get_model_outputs_for_input(multi_mask_sent.input_ids)
+        logits = outputs.logits
         # i,j are first and second based on call order
-        i_logits = logits[0, multi_mask_sent.masked_words[0].masked_token_indices[0]]
-        j_logits = logits[0, multi_mask_sent.masked_words[1].masked_token_indices[0]]
+        i_logits = mlm.extract_from_tensor_for_batch_and_tok_idx(logits, 0,
+                                                                 multi_mask_sent.masked_words[0].masked_token_indices[0])
+        j_logits = mlm.extract_from_tensor_for_batch_and_tok_idx(logits, 0,
+                                                                 multi_mask_sent.masked_words[1].masked_token_indices[0])
 
         # dist_diff = distr_diff_fn(orig_l.to(mlm.device), new_l.to(mlm.device)); not sure why we needed to send to device; should have still been on device
         # note that the functions we use are symmetric
@@ -224,3 +350,31 @@ def get_score_matrix_new(
         aff_scores[i,j] = score
 
     return aff_scores, new_sents_under_sub
+
+
+# todo: verify this shoudl go here
+def get_affinity_for_word(
+        sent: str,
+        tgt_word: str,
+        debug: bool =False,
+        score_fn = probability,
+        occ: Optional[int] = None   # pass occ around
+):
+    s = Sentence(sent, allow_non_alignment_in_tokenization=True)    # Sentence class takes care of tokenization
+
+    if debug:
+        print(s.encoding)
+
+    # we excluded any sentences that had multiple so's - see the code that reads in clean examples
+    masked_sent = s.get_input_with_word_masked(tgt_word, occ=occ)   # pass occ around
+
+    # obtain the logits at the masked position
+    logits = get_logits_for_masked_sent(masked_sent, do_print=debug)
+
+    # compute probability of the original word
+    prob = compute_surprisal_for_logits(
+        masked_sent,
+        logits,
+        score_fn
+    )
+    return prob

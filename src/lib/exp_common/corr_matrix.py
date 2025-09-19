@@ -384,6 +384,7 @@ def get_scores(
     Returns:
         A tuple of matrix_scores, new_sents, multi_tok_indices, sent_word_list, scores_floats, preds, probs, subs_list
     """
+    warnings.warn("in fcn get_scores(); consider using / prefer get_scores_new() to this function")
     logits_list_base, multi_tok_indices = make_logits_list(orig_sent)
 
     # surprisal requires two arguments so we gotta hack

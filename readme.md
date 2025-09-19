@@ -2,7 +2,7 @@
 Repository for work in [Constructions are Revealed in Word Distributions
 (arxiv)](https://arxiv.org/abs/2503.06048)
 
-- See src/paper for all experiments
+- See cxs_are_revealed/paper for all experiments
 - See example.ipynb for how to play with the affinity methods
 
 # Setup
@@ -12,7 +12,10 @@ Repository for work in [Constructions are Revealed in Word Distributions
    - and you'll need
        - `pip install git+https://github.com/jsrozner/rozlib-python.git@v.0.1.1`
 3. environment comments:
-   - You may need to mark /src as sources root (pycharm eg.), or 
+   - Because of directory structure, you might need to add to python exec path
+     - cxs_are_revealed/paper and cxs_are_revealed/src
+   - Alternatively, in pycharm (or perhaps vscode), 
+   you can mark these folders as sources root 
    - If you don't have pycharm or jupyter doesn't behave:
        - You may want to run your jupyter server from the /src directory since all
        imports are relative to /src 

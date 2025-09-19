@@ -2,7 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from data_config import DATADIR
+from proj.cxs_are_revealed.paper.data_config import DATADIR
 # todo: this should be importing from this project (we should use the config_wrapper but in another local file, I think)
 from rozlib.libs.common.config_wrapper import _config, Config
 

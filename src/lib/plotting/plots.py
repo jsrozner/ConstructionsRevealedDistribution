@@ -6,7 +6,7 @@ from typing import List, Optional, Tuple
 from pprint import pp
 
 import numpy as np
-from matplotlib import pyplot as plt
+from matplotlib import pyplot as plt, patches
 from matplotlib.figure import Figure
 
 from lib.distr_diff_fcns import euclidean_distance, jensen_shannon_divergence
@@ -257,7 +257,7 @@ def generate_word_score_image(
 
     # Create a red-scale color gradient (from white to dark red)
     # gradient = plt.cm.Blues(np.linspace(0, 1, 256))
-    gradient = plt.cm.Grays(np.linspace(0, 1, 256))
+    gradient = plt.cm.get_cmap("gray")(np.linspace(0, 1, 256))
     # reduce intensity
     if max_color_percent:
         assert 0 < max_color_percent < 1
@@ -276,7 +276,7 @@ def generate_word_score_image(
             txt = f"{word}\n{round(score_labels[idx], 2)}"
         else:
             txt = ""
-        ax.add_patch(plt.Rectangle((idx, 0), 1, 1, color=color))  # Color bar
+        ax.add_patch(patches.Rectangle((idx, 0), 1, 1, color=color))  # Color bar
         fontweight = 'bold'
         # textdecoration = 'underline' if scores[idx] > 0.9 else 'normal'
         ax.text(
@@ -338,7 +338,7 @@ def generate_word_score_image_new(
 
     # Create a red-scale color gradient (from white to dark red)
     # gradient = plt.cm.Blues(np.linspace(0, 1, 256))
-    gradient = plt.cm.Grays(np.linspace(0, 1, 256))
+    gradient = plt.cm.get_cmap("gray")(np.linspace(0, 1, 256))
     # reduce intensity
     if invert_scores:
         colors = [gradient[int((1-score) ** 2 * 230)] for score in scores]
@@ -352,7 +352,7 @@ def generate_word_score_image_new(
             txt = f"{word}\n{round(score_labels[idx], 2)}"
         else:
             txt = ""
-        ax.add_patch(plt.Rectangle((idx, 0), 1, 1, color=color))  # Color bar
+        ax.add_patch(patches.Rectangle((idx, 0), 1, 1, color=color))  # Color bar
         fontweight = 'bold'
         # textdecoration = 'underline' if scores[idx] > 0.9 else 'normal'
         ax.text(

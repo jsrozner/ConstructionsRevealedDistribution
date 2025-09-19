@@ -1,3 +1,5 @@
+import warnings
+
 import torch
 import torch.nn.functional as F
 from torch import Tensor
@@ -27,6 +29,7 @@ def euclidean_distance(p: Tensor, q: Tensor) -> float:
     Ranges from 0 to 2. Note that it is very similar to JS divergence except that it is noisier
 
     """
+    warnings.warn("Using euclidean distance.")
     p = torch.softmax(p, dim=-1)
     q = torch.softmax(q, dim=-1)
     # (for testing)

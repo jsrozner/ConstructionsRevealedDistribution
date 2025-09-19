@@ -65,6 +65,9 @@ def min_surprisal_rounded(logits: torch.Tensor):
     s = min_surprisal(logits)
     return round_tensor(s, 3)
 
+def get_logits(logits: torch.Tensor, tok_id: torch.Tensor) -> torch.Tensor:
+    return logits[tok_id]
+
 def surprisal(logits: torch.Tensor, tok_id: torch.Tensor) -> torch.Tensor:
     probs = torch.softmax(logits, dim=-1)
     prob_orig_token = probs[tok_id]

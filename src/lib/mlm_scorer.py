@@ -7,10 +7,9 @@ from lib.exp_common.mlm_align_tokens import reassembled_words_from_tokens_robert
     align_words_with_token_list
 from lib.common.mlm_scorer_base import MLMScorerBase
 from lib.scoring_fns import ScoreFn, hhi_trunc_rounded, hhi_ratio_unrounded
-from lib.utils.utils_misc import get_nth_occ
 
 from lib.scoring_fns import step_score, entropy_rounded, hhi_rounded, prob_ratio
-from rozlib.libs.utils.string import split_and_remove_punct
+from rozlib.libs.utils.string import split_and_remove_punct, get_nth_occ_list
 from rozlib.libs.library_ext_utils.utils_torch import round_tensor
 
 
@@ -18,9 +17,16 @@ class MLMScorer(MLMScorerBase):
     def __init__(
             self,
             model: str = 'roberta-large',
+            revision: Optional[str] = None,
             output_attentions: bool = False,
+            use_cache = True
     ):
-        super().__init__(model, output_attentions)
+        super().__init__(
+            model,
+            revision,
+            output_attentions,
+            use_cache
+        )
 
     # todo: deprecate this function
     def get_logits_for_input(self, input_ids: torch.Tensor) -> torch.Tensor:
@@ -58,6 +64,7 @@ class MLMScorer(MLMScorerBase):
             self,
             sentence: str,
             word_idx: int,
+            print_multitoken_errors = False
     ) -> Optional[torch.Tensor]:
         """
         Original method, NO BATCHING!; NOT OPTIMIZED
@@ -90,7 +97,8 @@ class MLMScorer(MLMScorerBase):
 
         # warn if it's multi tokenized
         if len(aligned_token_word.tokens) > 1:
-            print(f"WARN: {sent_words_list[word_idx]} mult tokens {aligned_token_word.tokens}")
+            if print_multitoken_errors:
+                print(f"WARN: {sent_words_list[word_idx]} mult tokens {aligned_token_word.tokens}")
             return None
         elif len(aligned_token_word.tokens) != 1:
             raise Exception("unexpected; token length is 0?")
@@ -181,7 +189,7 @@ class MLMScorer(MLMScorerBase):
             if word_occ is None:
                 raise Exception(f"{word} occurs more than once in sentence; specify which occurrence you want with word_occ (0 indexed)")
             # word_occ is 0 indexed here but 1 indexed in get_nth_occ
-            word_idx = get_nth_occ(sent_words_list, word, word_occ + 1)
+            word_idx = get_nth_occ_list(sent_words_list, word, word_occ + 1)
         else:
             word_idx = sent_words_list.index(word)
 
