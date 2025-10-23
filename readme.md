@@ -20,4 +20,3 @@ Repository for work in [Constructions are Revealed in Word Distributions
            imports are relative to /src 
            - You could alternatively tweak python_path to make sure that src is treated
             as an importable module
-    
